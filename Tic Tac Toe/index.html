@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Classic Tic Tac Toe</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --line-color: black;
+        --bg: #fff;
+        --text: #111;
+      }
+
+      .dark-mode {
+        --bg: #111;
+        --text: #fff;
+        --line-color: #fff;
+        background-image: none;
+      }
+
+      body {
+        background: var(--bg);
+        background-image: url("note2.png");
+        background-repeat: repeat;
+        background-size: 1620px;
+        color: var(--text);
+        font-family: "Patrick Hand", cursive;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        transition: all 0.3s;
+      }
+
+      h1 {
+        font-size: 2.5rem;
+        margin-top: 40px;
+      }
+
+      #status {
+        font-size: 1.2rem;
+        margin: 20px 0;
+      }
+
+      .board-container {
+        position: relative;
+        width: 310px;
+        height: 310px;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      .cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--text);
+        cursor: pointer;
+        color: #222;
+      }
+
+      .cell.win {
+        background-color: rgba(0, 255, 100, 0.2);
+      }
+
+      .grid-lines {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .grid-lines::before,
+      .grid-lines::after {
+        content: "";
+        position: absolute;
+        background-color: var(--line-color);
+      }
+
+      .grid-lines::before {
+        width: 4px;
+        height: 100%;
+        left: 33.33%;
+      }
+
+      .grid-lines::after {
+        width: 4px;
+        height: 100%;
+        left: 66.66%;
+      }
+
+      .grid-lines .h-line1,
+      .grid-lines .h-line2 {
+        position: absolute;
+        background-color: var(--line-color);
+        height: 4px;
+        width: 100%;
+      }
+
+      .grid-lines .h-line1 {
+        top: 33.33%;
+      }
+
+      .grid-lines .h-line2 {
+        top: 66.66%;
+      }
+
+      #darkToggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: transparent;
+        border: 2px solid var(--text);
+        color: var(--text);
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        z-index: 10;
+      }
+
+      #resetBtn {
+        margin-top: 20px;
+      }
+
+      @media (max-width: 400px) {
+        .board-container {
+          width: 260px;
+          height: 260px;
+        }
+
+        .cell {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button id="darkToggle">🌓</button>
+    <h1>Tic Tac Toe</h1>
+    <div id="status">Player X's turn</div>
+
+    <div class="board-container">
+      <div class="grid-lines">
+        <div class="h-line1"></div>
+        <div class="h-line2"></div>
+      </div>
+      <div class="board" id="board">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+      </div>
+    </div>
+
+    <button id="resetBtn" class="btn btn-danger">Restart</button>
+
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+    <!-- Sounds -->
+    <audio id="moveSound" preload="auto">
+      <source
+        src="https://assets.mixkit.co/sfx/preview/mixkit-video-game-click-1112.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+    <audio id="winSound" preload="auto">
+      <source
+        src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-complete-or-approved-205.wav"
+        type="audio/wav"
+      />
+    </audio>
+
+    <script>
+      const cells = document.querySelectorAll(".cell");
+      const statusText = document.getElementById("status");
+      const resetBtn = document.getElementById("resetBtn");
+      const darkToggle = document.getElementById("darkToggle");
+      const moveSound = document.getElementById("moveSound");
+      const winSound = document.getElementById("winSound");
+
+      let currentPlayer = "X";
+      let boardState = Array(9).fill("");
+      let gameActive = true;
+
+      const winCombos = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+      ];
+
+      cells.forEach((cell) => {
+        cell.addEventListener("click", () => {
+          const index = cell.dataset.index;
+          if (boardState[index] !== "" || !gameActive) return;
+
+          boardState[index] = currentPlayer;
+          cell.textContent = currentPlayer;
+          moveSound.play();
+
+          if (checkWinner()) {
+            statusText.textContent = `Player ${currentPlayer} wins!`;
+            winSound.play();
+            confetti();
+            gameActive = false;
+            return;
+          }
+
+          if (!boardState.includes("")) {
+            statusText.textContent = "It's a draw!";
+            gameActive = false;
+            return;
+          }
+
+          currentPlayer = currentPlayer === "X" ? "O" : "X";
+          statusText.textContent = `Player ${currentPlayer}'s turn`;
+        });
+      });
+
+      function checkWinner() {
+        for (let combo of winCombos) {
+          const [a, b, c] = combo;
+          if (
+            boardState[a] &&
+            boardState[a] === boardState[b] &&
+            boardState[b] === boardState[c]
+          ) {
+            combo.forEach((i) => cells[i].classList.add("win"));
+            return true;
+          }
+        }
+        return false;
+      }
+
+      resetBtn.addEventListener("click", () => {
+        boardState = Array(9).fill("");
+        cells.forEach((c) => {
+          c.textContent = "";
+          c.classList.remove("win");
+        });
+        currentPlayer = "X";
+        statusText.textContent = `Player X's turn`;
+        gameActive = true;
+      });
+
+      darkToggle.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+      });
+    </script>
+  </body>
+</html>
